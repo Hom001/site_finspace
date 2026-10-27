@@ -18,67 +18,46 @@
           - apt-transport-https
         update_cache: yes
         state: present
-      tags: mariadb
+      tags: test
     
-    - name: 2. Install MariaDB 10.11 Official
-      block:
-        - name: Add MariaDB repository
-          deb822_repository:
-            name: mariadb
-            types: deb
-            uris: https://mirror.docker.ru/mariadb/repo/10.11/ubuntu
-            suites: "{{ ansible_distribution_release}}"
-            components: main main/debug
-            signed_by: https://mariadb.org/mariadb_release_signing_key.pgp
-            state: present
-        - name: Install mariadb-server
-          apt:
-            name: mariadb-server
-            state: present
-      tags: mariadb
-      # ЗАКОНЧИЛ ТУТ, ДАЛЬШЕ СКРИПТ НЕ ПРОВЕРЕН
-    
-    - name: 3. 
+    - name: 2. Add MariaDB 10.11 repository
+      deb822_repository:
+        name: mariadb
+        types: deb
+        uris: https://mirror.docker.ru/mariadb/repo/13.0/ubuntu
+        suites: "{{ ansible_distribution_release}}"
+        components: main main/debug
+        signed_by: https://mariadb.org/mariadb_release_signing_key.pgp
+        state: present
+      tags: test
 
-    - name: 3. Add Nginx Official Repository for Nginx 1.18 / stable branch
-      block:
-        - name: Add Nginx signing key
-          apt_key:
-            url: https://nginx.org/keys/nginx_signing.key
-            state: present
-        - name: Add Nginx repository
-          apt_repository:
-            repo: "deb http://nginx.org/packages/ubuntu {{ ansible_lsb.codename|default('jammy') }} nginx"
-            state: present
-    
-    - name: 4. Add Ondrej PHP PPA for PHP 8.1
+    - name: 3. Add Ondrej PHP PPA for PHP 8.1
       apt_repository:
         repo: ppa:ondrej/php
         state: present
-    
-    - name: 5. Update apt cache after adding repos
-      apt:
         update_cache: yes
+      tags: test
 
     - name: 6. Install specific versions of Nginx, MariaDB, PHP-FPM and certbot
       apt:
         name:
-          - nginx
-          - mariadb-server
-          - mariadb-client
-          - php8.1-fpm
-          - php8.1-mysql
-          - php8.1-mbstring
-          - php8.1-xml
-          - php8.1-curl
-          - php8.1-zip
-          - php8.1-gd
-          - certbot
-          - python3-certbot-nginx
-          - python3-pymysql
-          - unzip
+          - nginx=1.24.0-2ubuntu7.19
+          - mariadb-server=1:13.0.2+maria~ubu2404
+          - mariadb-client=1:13.0.2+maria~ubu2404
+          - php8.1-fpm=8.1.34-9+ubuntu24.04.1+deb.sury.org+1
+          - php8.1-mysql=8.1.34-9+ubuntu24.04.1+deb.sury.org+1
+          - php8.1-mbstring=8.1.34-9+ubuntu24.04.1+deb.sury.org+1
+          - php8.1-xml=8.1.34-9+ubuntu24.04.1+deb.sury.org+1
+          - php8.1-curl=8.1.34-9+ubuntu24.04.1+deb.sury.org+1
+          - php8.1-zip=8.1.34-9+ubuntu24.04.1+deb.sury.org+1
+          - php8.1-gd=8.1.34-9+ubuntu24.04.1+deb.sury.org+1
+          - certbot=2.9.0-1
+          - python3-certbot-nginx=2.9.0-1
+          - python3-pymysql=1.0.2-2ubuntu1.1
+          - unzip=6.0-28ubuntu4.1
         state: present
         allow_downgrade: yes
+      tags: test
 
     - name: 7. Ensure Nginx and MariaDB services are started and enabled
       service:
