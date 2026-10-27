@@ -5,8 +5,11 @@
     web_root: "/var/www/finspace"
     db_name: "wordpresd_db"
     db_user: "wp_user"
-    db_password: "nf1iFs0$#nfsnGyQw"
-    archive_file: "archive.zip"
+    db_password: "2"
+    files_to_copy:
+      - { src: "20251203_d184d0b8d0bdd181d0bfd18dd0b9d18_24b833eb4d835b0d3361_20260826072723_archive.zip", mode: "0644" }
+      - { src: "installer.php", mode: "0755" }
+    mysql_root_password: "321"
 
   tasks:
     - name: 1. Install prerequisites for adding external repositories
@@ -20,7 +23,7 @@
         state: present
       tags: test
     
-    - name: 2. Add MariaDB 10.11 repository
+    - name: 2. Add MariaDB 13.0 repository
       deb822_repository:
         name: mariadb
         types: deb
@@ -68,77 +71,86 @@
         - nginx
         - mariadb
         - php8.1-fpm
+      tags: test
 
-    - name: Configure root MySQL credentials for Ansible
+    - name: 8. Set root password
+      command: >
+        mariadb -e "ALTER USER 'root'@'localhost'
+        IDENTIFIED VIA unix_socket OR mysql_native_password
+        USING PASSWORD('{{ mysql_root_password }}'); FLUSH PRIVILEGES;"
+      changed_when: false
+      no_log: true
+      tags: test
+
+    - name: 9. Configure root MySQL credentials for Ansible
       copy:
         content: |
           [client]
           user=root
-          password=
+          password={{ mysql_root_password }}
         dest: /root/.my.cnf
         mode: '0600'
-
-    - name: Ensure root can login via native password method (if needed)
-      mysql_query:
-        login_user: root
-        login_password: ""
-        query: "ALTER USER 'root'@'localhost' IDENTIFIED VIA mysql_native_password USING PASSWORD(''); FLUSH PRIVILEGES;"
-      ignore_errors: yes
+      no_log: true
+      tags: test
     
-    - name: 8. Create database for WordPress
+    - name: 10. Create database for WordPress
       mysql_db:
+        login_unix_socket: /run/mysqld/mysqld.sock
         name: "{{ db_name }}"
         state: present
         encoding: utf8mb4
         collation: utf8mb4_unicode_ci
+      tags: test
 
-    - name: 9. Create database user and grant privileges
+    - name: 11. Create database user and grant privileges
       mysql_user:
+        login_unix_socket: /run/mysqld/mysqld.sock
         name: "{{ db_user }}"
         password: "{{ db_password }}"
         priv: "{{ db_name }}.*:ALL"
         state: present
+      tags: test
 
-    - name: 10. Create web root directory
+      # ВСЁ ЧТО НИЖЕ БЫЛО ПРОТЕСТИРОВАНО
+
+    - name: 12. Create web root directory
       file:
         path: "{{ web_root }}"
         state: directory
         owner: www-data
         group: www-data
         mode: '0755'
+      tags: test
 
-    - name: 11. Copy Duplicator archive to the server
+    - name: 13. Copy Duplicator archive and installer file to the server
       copy:
-        src: "{{ archive_file }}"
-        dest: "{{ web_root }}/{{ archive_file }}"
+        src: "{{ item.src }}"
+        dest: "{{ web_root }}/{{ item.src }}"
         owner: www-data
         group: www-data
-        mode: '0644'
-
-    - name: 12. Find database SQL dump inside extracted file
-      find:
-        paths: "{{ web_root }}"
-        patterns: "database.sql"
-      register: sql_dump_file
-
-    - name: 13. Import database if SQL file found
-      mysql_db:
-        name: "{{ db_name }}"
-        state: import
-        target: "{{ sql_dump_file.files[0].path }}"
-      when: sql_dump_file.matched | length > 0
+        mode: "{{ item.mode }}"
+      loop: "{{ files_to_copy }}"
+      loop_control:
+        label: "{{ item.src }}"
+      tags: test
 
     - name: 14. Configure Nginx virtual host (HTTP initial setup for Let's Encrypt validation)
       template:
         src: "nginx_site.j2"
         dest: "/etc/nginx/conf.d/{{ site_domain }}.conf"
       notify: Restart Nginx
+      tags: test
     
     - name: 15. Remove default Nginx config if exists
       file:
-        path: "/etc/nginx/conf.d/default.conf"
+        path: "{{ item }}"
         state: absent
+      loop:
+        - "/etc/nginx/conf.d/default.conf"
+        - "/etc/nginx/sites-enabled/default"
+        - "/etc/nginx/sites-available/default"
       notify: Restart Nginx
+      tags: test
 
     - name: Flush handlers to apply Nginx config before certbot
       meta: flush_handlers
