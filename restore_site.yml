@@ -1,0 +1,192 @@
+- hosts: wordpress_servers
+  become: yes
+  vars:
+    site_domain: "fs.sim-dev.ru"
+    web_root: "/var/www/finspace"
+    db_name: "wordpresd_db"
+    db_user: "wp_user"
+    db_password: "nf1iFs0$#nfsnGyQw"
+    archive_file: "archive.zip"
+
+  tasks:
+    - name: 1. Install prerequisites for adding external repositories
+      apt:
+        name:
+          - software-properties-common
+          - curl
+          - gnupg2
+          - apt-transport-https
+        update_cache: yes
+        state: present
+      tags: mariadb
+    
+    - name: 2. Install MariaDB 10.11 Official
+      block:
+        - name: Add MariaDB repository
+          deb822_repository:
+            name: mariadb
+            types: deb
+            uris: https://mirror.docker.ru/mariadb/repo/10.11/ubuntu
+            suites: "{{ ansible_distribution_release}}"
+            components: main main/debug
+            signed_by: https://mariadb.org/mariadb_release_signing_key.pgp
+            state: present
+        - name: Install mariadb-server
+          apt:
+            name: mariadb-server
+            state: present
+      tags: mariadb
+      # ЗАКОНЧИЛ ТУТ, ДАЛЬШЕ СКРИПТ НЕ ПРОВЕРЕН
+    
+    - name: 3. 
+
+    - name: 3. Add Nginx Official Repository for Nginx 1.18 / stable branch
+      block:
+        - name: Add Nginx signing key
+          apt_key:
+            url: https://nginx.org/keys/nginx_signing.key
+            state: present
+        - name: Add Nginx repository
+          apt_repository:
+            repo: "deb http://nginx.org/packages/ubuntu {{ ansible_lsb.codename|default('jammy') }} nginx"
+            state: present
+    
+    - name: 4. Add Ondrej PHP PPA for PHP 8.1
+      apt_repository:
+        repo: ppa:ondrej/php
+        state: present
+    
+    - name: 5. Update apt cache after adding repos
+      apt:
+        update_cache: yes
+
+    - name: 6. Install specific versions of Nginx, MariaDB, PHP-FPM and certbot
+      apt:
+        name:
+          - nginx
+          - mariadb-server
+          - mariadb-client
+          - php8.1-fpm
+          - php8.1-mysql
+          - php8.1-mbstring
+          - php8.1-xml
+          - php8.1-curl
+          - php8.1-zip
+          - php8.1-gd
+          - certbot
+          - python3-certbot-nginx
+          - python3-pymysql
+          - unzip
+        state: present
+        allow_downgrade: yes
+
+    - name: 7. Ensure Nginx and MariaDB services are started and enabled
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop:
+        - nginx
+        - mariadb
+        - php8.1-fpm
+
+    - name: Configure root MySQL credentials for Ansible
+      copy:
+        content: |
+          [client]
+          user=root
+          password=
+        dest: /root/.my.cnf
+        mode: '0600'
+
+    - name: Ensure root can login via native password method (if needed)
+      mysql_query:
+        login_user: root
+        login_password: ""
+        query: "ALTER USER 'root'@'localhost' IDENTIFIED VIA mysql_native_password USING PASSWORD(''); FLUSH PRIVILEGES;"
+      ignore_errors: yes
+    
+    - name: 8. Create database for WordPress
+      mysql_db:
+        name: "{{ db_name }}"
+        state: present
+        encoding: utf8mb4
+        collation: utf8mb4_unicode_ci
+
+    - name: 9. Create database user and grant privileges
+      mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_password }}"
+        priv: "{{ db_name }}.*:ALL"
+        state: present
+
+    - name: 10. Create web root directory
+      file:
+        path: "{{ web_root }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: 11. Copy Duplicator archive to the server
+      copy:
+        src: "{{ archive_file }}"
+        dest: "{{ web_root }}/{{ archive_file }}"
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+    - name: 12. Find database SQL dump inside extracted file
+      find:
+        paths: "{{ web_root }}"
+        patterns: "database.sql"
+      register: sql_dump_file
+
+    - name: 13. Import database if SQL file found
+      mysql_db:
+        name: "{{ db_name }}"
+        state: import
+        target: "{{ sql_dump_file.files[0].path }}"
+      when: sql_dump_file.matched | length > 0
+
+    - name: 14. Configure Nginx virtual host (HTTP initial setup for Let's Encrypt validation)
+      template:
+        src: "nginx_site.j2"
+        dest: "/etc/nginx/conf.d/{{ site_domain }}.conf"
+      notify: Restart Nginx
+    
+    - name: 15. Remove default Nginx config if exists
+      file:
+        path: "/etc/nginx/conf.d/default.conf"
+        state: absent
+      notify: Restart Nginx
+
+    - name: Flush handlers to apply Nginx config before certbot
+      meta: flush_handlers
+
+    - name: 16. Obtain Let's Encrypt SSL certificate via Certbot Nginx plugin
+      command: >
+        certbot --nginx
+        -d {{ site_domain }}
+        -d www.{{ site_domain }}
+        --non-interactive
+        --agree-tos
+        -m finspace.consulting@gmail.com
+        --redirect
+      args:
+        creates: "/etc/letsencrypt/live/{{ site_domain }}/fullchain.pem"
+    - name: 17. Setup automated SSL certificate renewal cron/timer
+      systemd:
+        name: certbot.timer
+        state: started
+        enabled: yes
+  handlers:
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted
+    
+    - name: Restart PHP-FPM
+      service:
+        name: php8.1-fpm
+        state: restarted
