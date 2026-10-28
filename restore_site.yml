@@ -7,8 +7,8 @@
     db_user: "{{ v_db_user }}"
     db_password: "{{ v_db_password }}"
     files_to_copy:
-      - { src: "20251203_d184d0b8d0bdd181d0bfd18dd0b9d18_24b833eb4d835b0d3361_20260826072723_archive.zip", mode: "0644" }
-      - { src: "installer.php", mode: "0755" }
+      - { src: "{{ v_path_to_backup_archive }}", mode: "0644" }
+      - { src: "{{ v_path_to_installer_file }}", mode: "0755" }
     mysql_root_password: "{{ v_mysql_root_password }}"
 
   tasks:
