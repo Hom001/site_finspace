@@ -2,8 +2,7 @@ server {
         
     listen [::]:80 default_server;
 
-
-    root /var/www/html/wordpress;
+    root {{ web_root }};
     index  index.php index.html index.htm;
     server_name "{{ site_domain }}";
     
@@ -49,7 +48,7 @@ server {
 
     ssl_certificate /etc/letsencrypt/live/{{ site_domain }}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/{{ site_domain }}/privkey.pem;
-    root /var/www/html/wordpress;
+    root {{ web_root }};
     index  index.php index.html index.htm;
     server_name "{{ site_domain }}";
 
