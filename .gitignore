@@ -4,3 +4,6 @@ backup.js
 README.MD
 site.js
 заметки.txt
+stub_status.conf
+zabbix_agentd.conf
+cloud_init.yaml
