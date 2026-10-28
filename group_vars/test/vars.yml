@@ -1,0 +1,4 @@
+v_ansible_host: 192.168.1.164
+v_ansible_user: "{{ ve_ansible_user }}"
+v_ansible_password: "{{ ve_ansible_password }}"
+
