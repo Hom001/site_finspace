@@ -14,4 +14,4 @@ v_db_password: "{{ ve_db_password }}"
 v_mysql_root_password: "{{ ve_mysql_root_password }}"
 
 v_path_to_backup_archive: "20251203_d184d0b8d0bdd181d0bfd18dd0b9d18_24b833eb4d835b0d3361_20260826072723_archive.zip"
-v_path_to_installer_file: "install.php"
+v_path_to_installer_file: "installer.php"
