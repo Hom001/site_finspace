@@ -144,6 +144,7 @@
     - name: 14. Obtain Let's Encrypt SSL certificate via Certbot Nginx plugin
       command: >
         certbot certonly --webroot
+        -w {{ web_root }}
         -d {{ site_domain }}
         -d www.{{ site_domain }}
         --non-interactive
