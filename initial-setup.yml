@@ -1,0 +1,131 @@
+---
+# Первичная настройка сервера (Debian/Ubuntu)
+# Запуск: ansible-playbook -i inventory.ini initial-setup.yml -k
+#   (-k нужен, если первый вход под root идёт по паролю)
+
+- name: Initial server setup
+  hosts: prod_server
+  remote_user: root
+  become: false
+
+  vars:
+    new_user: deploy
+    # Ключ создаётся на управляющей машине (там, где запускается ansible)
+    ssh_key_path: "{{ lookup('env', 'HOME') }}/.ssh/{{ new_user }}_ed25519"
+    # true  -> sudo без пароля (удобно, т.к. вход по паролю будет закрыт)
+    # false -> понадобится задать пароль пользователю вручную: passwd {{ new_user }}
+    sudo_nopasswd: true
+
+  tasks:
+    # ---------- Пакеты ----------
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - sudo
+          - ufw
+          - openssh-server
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    # ---------- Пользователь ----------
+    - name: Create user and add to sudo group
+      ansible.builtin.user:
+        name: "{{ new_user }}"
+        shell: /bin/bash
+        groups: sudo
+        append: true
+        create_home: true
+        state: present
+
+    - name: Allow passwordless sudo for the user
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/90-{{ new_user }}"
+        content: "{{ new_user }} ALL=(ALL) NOPASSWD:ALL\n"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: "visudo -cf %s"
+      when: sudo_nopasswd | bool
+
+    # ---------- Firewall (ufw) ----------
+    # Сначала разрешаем SSH, и только потом включаем ufw, иначе потеряете доступ
+    - name: Allow SSH
+      community.general.ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+
+    - name: Allow HTTP
+      community.general.ufw:
+        rule: allow
+        port: "80"
+        proto: tcp
+
+    - name: Allow HTTPS
+      community.general.ufw:
+        rule: allow
+        port: "443"
+        proto: tcp
+
+    - name: Set default policy for incoming traffic to deny
+      community.general.ufw:
+        default: deny
+        direction: incoming
+
+    - name: Enable ufw
+      community.general.ufw:
+        state: enabled
+
+    # ---------- SSH-ключи ----------
+    - name: Ensure ~/.ssh exists on the control node
+      ansible.builtin.file:
+        path: "{{ lookup('env', 'HOME') }}/.ssh"
+        state: directory
+        mode: "0700"
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: Generate ed25519 key pair on the control node
+      community.crypto.openssh_keypair:
+        path: "{{ ssh_key_path }}"
+        type: ed25519
+        comment: "{{ new_user }}@ansible"
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: Copy public key to the server
+      ansible.posix.authorized_key:
+        user: "{{ new_user }}"
+        key: "{{ lookup('file', ssh_key_path + '.pub') }}"
+        state: present
+
+    # ---------- Запрет входа по паролю ----------
+    # Имя файла начинается с 01-, чтобы он применился раньше других drop-in
+    # (например, 50-cloud-init.conf на Ubuntu, где PasswordAuthentication yes)
+    - name: Disable SSH password authentication
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/01-key-only.conf
+        content: |
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          PubkeyAuthentication yes
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart sshd
+
+    - name: Validate sshd configuration
+      ansible.builtin.command: sshd -t
+      changed_when: false
+
+    - name: Apply SSH changes now
+      ansible.builtin.meta: flush_handlers
+
+  handlers:
+    - name: Restart sshd
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
