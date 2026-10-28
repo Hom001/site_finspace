@@ -4,7 +4,7 @@
 #   (-k нужен, если первый вход под root идёт по паролю)
 
 - name: Initial server setup
-  hosts: prod_server
+  hosts: all
   remote_user: root
   become: false
 

@@ -1,4 +1,4 @@
-- hosts: wordpress_servers
+- hosts: all
   become: yes
   vars:
     site_domain: "{{ v_site_domain }}"
@@ -21,7 +21,6 @@
           - apt-transport-https
         update_cache: yes
         state: present
-      tags: test
     
     - name: 2. Add MariaDB 13.0 repository
       deb822_repository:
@@ -32,14 +31,12 @@
         components: main main/debug
         signed_by: https://mariadb.org/mariadb_release_signing_key.pgp
         state: present
-      tags: test
 
     - name: 3. Add Ondrej PHP PPA for PHP 8.1
       apt_repository:
         repo: ppa:ondrej/php
         state: present
         update_cache: yes
-      tags: test
 
     - name: 4. Install specific versions of Nginx, MariaDB, PHP-FPM and certbot
       apt:
@@ -60,7 +57,6 @@
           - unzip=6.0-28ubuntu4.1
         state: present
         allow_downgrade: yes
-      tags: test
 
     - name: 5. Ensure Nginx and MariaDB services are started and enabled
       service:
@@ -71,7 +67,6 @@
         - nginx
         - mariadb
         - php8.1-fpm
-      tags: test
 
     - name: 6. Set root password
       command: >
@@ -80,7 +75,6 @@
         USING PASSWORD('{{ mysql_root_password }}'); FLUSH PRIVILEGES;"
       changed_when: false
       no_log: true
-      tags: test
 
     - name: 7. Configure root MySQL credentials for Ansible
       copy:
@@ -91,7 +85,6 @@
         dest: /root/.my.cnf
         mode: '0600'
       no_log: true
-      tags: test
     
     - name: 8. Create database for WordPress
       mysql_db:
@@ -100,7 +93,6 @@
         state: present
         encoding: utf8mb4
         collation: utf8mb4_unicode_ci
-      tags: test
 
     - name: 9. Create database user and grant privileges
       mysql_user:
@@ -110,7 +102,6 @@
         priv: "{{ db_name }}.*:ALL"
         state: present
       no_log: true
-      tags: test
 
     - name: 10. Create web root directory
       file:
@@ -119,7 +110,6 @@
         owner: www-data
         group: www-data
         mode: '0755'
-      tags: test
 
     - name: 11. Copy Duplicator archive and installer file to the server
       copy:
@@ -131,14 +121,12 @@
       loop: "{{ files_to_copy }}"
       loop_control:
         label: "{{ item.src }}"
-      tags: test
 
     - name: 12. Configure Nginx virtual host (HTTP initial setup for Let's Encrypt validation)
       template:
-        src: "nginx_site.j2"
+        src: "nginx_first_config.j2"
         dest: "/etc/nginx/conf.d/{{ site_domain }}.conf"
       notify: Restart Nginx
-      tags: test
     
     - name: 13. Remove default Nginx config if exists
       file:
@@ -149,7 +137,6 @@
         - "/etc/nginx/sites-enabled/default"
         - "/etc/nginx/sites-available/default"
       notify: Restart Nginx
-      tags: test
 
     - name: Flush handlers to apply Nginx config before certbot
       meta: flush_handlers
@@ -171,6 +158,18 @@
         name: certbot.timer
         state: started
         enabled: yes
+
+    - name: 16. Remove previous NGINX config
+      file:
+        path: "/etc/nginx/conf.d/{{ site_domain }}.conf"
+        state: absent
+      
+    - name: 17. Configure Nginx for site Finspace
+      template:
+        src: "finspace_config.j2"
+        dest: "/etc/nginx/conf.d/{{ site_domain }}.conf"
+      notify: Restart Nginx
+
   handlers:
     - name: Restart Nginx
       service:

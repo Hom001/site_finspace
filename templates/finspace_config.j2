@@ -1,13 +1,19 @@
 server {
-    listen 80 default_server;
+        
     listen [::]:80 default_server;
 
 
     root /var/www/html/wordpress;
     index  index.php index.html index.htm;
-    server_name 5792681-ej451000;
+    server_name "{{ site_domain }}";
     
     client_max_body_size 500M;
+
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        default_type "text/plain";
+        try_files $uri =404;
+    }
 
     location / {
         try_files $uri $uri/ /index.php?$args;
@@ -41,11 +47,11 @@ server {
     listen 443 ssl default_server;
     listen [::]:443 ssl default_server;
 
- ssl_certificate /etc/letsencrypt/live/xn--h1aclijcp0f.xn--p1ai/fullchain.pem;
- ssl_certificate_key /etc/letsencrypt/live/xn--h1aclijcp0f.xn--p1ai/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/"{{ site_domain }}"/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/"{{ site_domain }}"/privkey.pem;
     root /var/www/html/wordpress;
     index  index.php index.html index.htm;
-    server_name 5792681-ej451000;
+    server_name "{{ site_domain }}";
 
     client_max_body_size 500M;
 
