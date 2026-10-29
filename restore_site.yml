@@ -170,6 +170,14 @@
         src: "finspace_config.j2"
         dest: "/etc/nginx/conf.d/{{ site_domain }}.conf"
       notify: Restart Nginx
+    
+    - name: 18. Copy stub-file for zabbix web-scenario
+      ansible.builtin.copy:
+        src: files/stub_status.conf
+        dest: /etc/nginx/conf.d/stub_status.conf
+        owner: root
+        group: root
+        mode: "0644"
 
   handlers:
     - name: Restart Nginx
