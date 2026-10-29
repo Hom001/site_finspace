@@ -1,0 +1,56 @@
+---
+- name: Install and configure Zabbix Agent 2
+  hosts: all
+  become: true
+
+  vars:
+    zabbix_release_url: >-
+      https://repo.zabbix.com/zabbix/{{ v_zabbix_version }}/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_{{ v_zabbix_version }}+ubuntu{{ ansible_distribution_version }}_all.deb
+
+  tasks:
+    - name: Download Zabbix release package
+      ansible.builtin.get_url:
+        url: "{{ zabbix_release_url }}"
+        dest: /tmp/zabbix-release.deb
+        mode: '0644'
+
+    - name: Install Zabbix repository
+      ansible.builtin.apt:
+        deb: /tmp/zabbix-release.deb
+        state: present
+
+    - name: Install Zabbix Agent 2
+      ansible.builtin.apt:
+        name: zabbix-agent2
+        state: present
+        update_cache: true
+
+    - name: Configure Zabbix Agent 2
+      ansible.builtin.template:
+        src: ../files/zabbix_agentd.conf
+        dest: /etc/zabbix/zabbix_agent2.conf
+        owner: root
+        group: zabbix
+        mode: '0640'
+        backup: true
+      notify: Restart zabbix-agent2
+
+    - name: Allow agent port from Zabbix server (ufw)
+      community.general.ufw:
+        rule: allow
+        proto: tcp
+        port: "{{ zabbix_agent_port }}"
+        src: "{{ zabbix_server_ip }}"
+      when: ansible_facts.services['ufw.service'] is defined and ansible_facts.services['ufw.service'].state == 'running'
+
+    - name: Enable and start Zabbix Agent 2
+      ansible.builtin.service:
+        name: zabbix-agent2
+        state: started
+        enabled: true
+
+  handlers:
+    - name: Restart zabbix-agent2
+      ansible.builtin.service:
+        name: zabbix-agent2
+        state: restarted

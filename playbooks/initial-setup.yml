@@ -129,3 +129,6 @@
       ansible.builtin.service:
         name: ssh
         state: restarted
+
+- name: Install zabbix-agent2
+  ansible.builtin.import_playbook: install_zabbix_agent.yml
