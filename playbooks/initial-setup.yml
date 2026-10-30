@@ -1,8 +1,4 @@
 ---
-# Первичная настройка сервера (Debian/Ubuntu)
-# Запуск: ansible-playbook -i inventory.ini initial-setup.yml -k
-#   (-k нужен, если первый вход под root идёт по паролю)
-
 - name: Initial server setup
   hosts: all
   remote_user: root
