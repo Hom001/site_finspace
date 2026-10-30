@@ -3,7 +3,7 @@
   vars:
     site_domain: "{{ v_site_domain }}"
     web_root: "/var/www/finspace"
-    db_name: "wordpresd_db"
+    db_name: "wordpress_db"
     db_user: "{{ v_db_user }}"
     db_password: "{{ v_db_password }}"
     files_to_copy:
