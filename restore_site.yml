@@ -67,26 +67,8 @@
         - nginx
         - mariadb
         - php8.1-fpm
-
-    - name: 6. Set root password
-      command: >
-        mariadb -e "ALTER USER 'root'@'localhost'
-        IDENTIFIED VIA unix_socket OR mysql_native_password
-        USING PASSWORD('{{ mysql_root_password }}'); FLUSH PRIVILEGES;"
-      changed_when: false
-      no_log: true
-
-    - name: 7. Configure root MySQL credentials for Ansible
-      copy:
-        content: |
-          [client]
-          user=root
-          password={{ mysql_root_password }}
-        dest: /root/.my.cnf
-        mode: '0600'
-      no_log: true
     
-    - name: 8. Create database for WordPress
+    - name: 6. Create database for WordPress
       mysql_db:
         login_unix_socket: /run/mysqld/mysqld.sock
         name: "{{ db_name }}"
@@ -94,7 +76,7 @@
         encoding: utf8mb4
         collation: utf8mb4_unicode_ci
 
-    - name: 9. Create database user and grant privileges
+    - name: 7. Create database user and grant privileges
       mysql_user:
         login_unix_socket: /run/mysqld/mysqld.sock
         name: "{{ db_user }}"
@@ -103,7 +85,7 @@
         state: present
       no_log: true
 
-    - name: 10. Create web root directory
+    - name: 8. Create web root directory
       file:
         path: "{{ web_root }}"
         state: directory
@@ -111,7 +93,7 @@
         group: www-data
         mode: '0755'
 
-    - name: 11. Copy Duplicator archive and installer file to the server
+    - name: 9. Copy Duplicator archive and installer file to the server
       copy:
         src: "{{ item.src }}"
         dest: "{{ web_root }}/{{ item.src }}"
@@ -122,13 +104,13 @@
       loop_control:
         label: "{{ item.src }}"
 
-    - name: 12. Configure Nginx virtual host (HTTP initial setup for Let's Encrypt validation)
+    - name: 10. Configure Nginx virtual host (HTTP initial setup for Let's Encrypt validation)
       template:
         src: "nginx_first_config.j2"
         dest: "/etc/nginx/conf.d/{{ site_domain }}.conf"
       notify: Restart Nginx
     
-    - name: 13. Remove default Nginx config if exists
+    - name: 11. Remove default Nginx config if exists
       file:
         path: "{{ item }}"
         state: absent
@@ -141,7 +123,7 @@
     - name: Flush handlers to apply Nginx config before certbot
       meta: flush_handlers
 
-    - name: 14. Obtain Let's Encrypt SSL certificate via Certbot Nginx plugin
+    - name: 12. Obtain Let's Encrypt SSL certificate via Certbot Nginx plugin
       command: >
         certbot certonly --webroot
         -w {{ web_root }}
@@ -154,24 +136,24 @@
       args:
         creates: "/etc/letsencrypt/live/{{ site_domain }}/fullchain.pem"
 
-    - name: 15. Setup automated SSL certificate renewal cron/timer
+    - name: 13. Setup automated SSL certificate renewal cron/timer
       systemd:
         name: certbot.timer
         state: started
         enabled: yes
 
-    - name: 16. Remove previous NGINX config
+    - name: 14. Remove previous NGINX config
       file:
         path: "/etc/nginx/conf.d/{{ site_domain }}.conf"
         state: absent
       
-    - name: 17. Configure Nginx for site Finspace
+    - name: 15. Configure Nginx for site Finspace
       template:
         src: "finspace_config.j2"
         dest: "/etc/nginx/conf.d/{{ site_domain }}.conf"
       notify: Restart Nginx
     
-    - name: 18. Copy stub-file for zabbix web-scenario
+    - name: 16. Copy stub-file for zabbix web-scenario
       ansible.builtin.copy:
         src: files/stub_status.conf
         dest: /etc/nginx/conf.d/stub_status.conf
@@ -185,7 +167,3 @@
         name: nginx
         state: restarted
     
-    - name: Restart PHP-FPM
-      service:
-        name: php8.1-fpm
-        state: restarted
