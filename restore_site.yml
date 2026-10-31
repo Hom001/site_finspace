@@ -1,15 +1,11 @@
 - hosts: all
   become: yes
   vars:
-    site_domain: "{{ v_site_domain }}"
     web_root: "/var/www/finspace"
     db_name: "wordpress_db"
-    db_user: "{{ v_db_user }}"
-    db_password: "{{ v_db_password }}"
     files_to_copy:
-      - { src: "{{ v_path_to_backup_archive }}", mode: "0644" }
-      - { src: "{{ v_path_to_installer_file }}", mode: "0755" }
-    mysql_root_password: "{{ v_mysql_root_password }}"
+      - { src: "{{ backup_archive }}", mode: "0644" }
+      - { src: "{{ installer_file }}", mode: "0755" }
 
   tasks:
     - name: 1. Install prerequisites for adding external repositories
@@ -131,8 +127,7 @@
         -d www.{{ site_domain }}
         --non-interactive
         --agree-tos
-        -m finspace.consulting@gmail.com
-        --redirect
+        -m finspace.consulting@gmail.comы
       args:
         creates: "/etc/letsencrypt/live/{{ site_domain }}/fullchain.pem"
 
