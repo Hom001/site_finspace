@@ -1,11 +1,11 @@
 ---
 - name: Install and configure Zabbix Agent 2
-  hosts: all
+  hosts: "{{ env }}"
   become: true
 
   vars:
     zabbix_release_url: >-
-      https://repo.zabbix.com/zabbix/{{ v_zabbix_version }}/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_{{ v_zabbix_version }}+ubuntu{{ ansible_distribution_version }}_all.deb
+      https://repo.zabbix.com/zabbix/{{ zabbix_version }}/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_{{ zabbix_version }}+ubuntu{{ ansible_distribution_version }}_all.deb
 
   tasks:
     - name: Download Zabbix release package

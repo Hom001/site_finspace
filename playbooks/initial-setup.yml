@@ -1,6 +1,6 @@
 ---
 - name: Initial server setup
-  hosts: all
+  hosts: "{{ env }}"
   remote_user: root
   become: false
 

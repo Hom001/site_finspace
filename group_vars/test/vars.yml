@@ -1,14 +1,14 @@
 # Подключение
-ansible_host: 192.168.1.1
+ansible_host: 87.228.105.234
 
 root_user: "{{ ve_root_user }}"
-root_ssh_key: /home/.ssh/Sharon
+root_ssh_key: /home/kirill/.ssh/Sharon
 
 deploy_user: "{{ ve_ansible_user }}"
-deploy_ssh_key: /home/.ssh/deploy_ed25519
+deploy_ssh_key: /home/kirill/.ssh/deploy_ed25519
 
 ansible_user: "{{ root_user if (bootstrap | default(false) | bool) else deploy_user }}"
-ansible_ssh_private_key_file: "{{ root_ssh_key if (bootstrap | default(false) bool) else deploy_ssh_key }}"
+ansible_ssh_private_key_file: "{{ root_ssh_key if (bootstrap | default(false) | bool) else deploy_ssh_key }}"
 
 # Сайт
 site_domain: "{{ ve_site_domain }}"
@@ -24,5 +24,5 @@ installer_file: "installer.php"
 
 # Zabbix
 zabbix_version: 7.0
-zabbix_server_ip: {{ ve_zabbix_server_ip }}
+zabbix_server_ip: "{{ ve_zabbix_server_ip }}"
 zabbix_agent_port: 10050

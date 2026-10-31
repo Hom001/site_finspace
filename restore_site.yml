@@ -1,4 +1,4 @@
-- hosts: all
+- hosts: "{{ env }}"
   become: yes
   vars:
     web_root: "/var/www/finspace"
@@ -127,7 +127,7 @@
         -d www.{{ site_domain }}
         --non-interactive
         --agree-tos
-        -m finspace.consulting@gmail.comы
+        -m finspace.consulting@gmail.com
       args:
         creates: "/etc/letsencrypt/live/{{ site_domain }}/fullchain.pem"
 
@@ -136,19 +136,14 @@
         name: certbot.timer
         state: started
         enabled: yes
-
-    - name: 14. Remove previous NGINX config
-      file:
-        path: "/etc/nginx/conf.d/{{ site_domain }}.conf"
-        state: absent
       
-    - name: 15. Configure Nginx for site Finspace
+    - name: 14. Configure Nginx for site Finspace
       template:
         src: "finspace_config.j2"
         dest: "/etc/nginx/conf.d/{{ site_domain }}.conf"
       notify: Restart Nginx
     
-    - name: 16. Copy stub-file for zabbix web-scenario
+    - name: 15. Copy stub-file for zabbix web-scenario
       ansible.builtin.copy:
         src: files/stub_status.conf
         dest: /etc/nginx/conf.d/stub_status.conf
