@@ -62,7 +62,7 @@
       loop:
         - nginx
         - mariadb
-        - php8.1-fpm
+        - php{{ php_version }}-fpm
     
     - name: 6. Create database for WordPress
       mysql_db:
@@ -130,12 +130,14 @@
         -m finspace.consulting@gmail.com
       args:
         creates: "/etc/letsencrypt/live/{{ site_domain }}/fullchain.pem"
+      tags: need_domain
 
     - name: 13. Setup automated SSL certificate renewal cron/timer
       systemd:
         name: certbot.timer
         state: started
         enabled: yes
+      tags: need_domain
       
     - name: 14. Configure Nginx for site Finspace
       template:
