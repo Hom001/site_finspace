@@ -1,5 +1,5 @@
 # Подключение
-ansible_host: 87.228.105.234
+ansible_host: 192.168.1.170
 
 root_user: "{{ ve_root_user }}"
 root_ssh_key: /home/kirill/.ssh/Sharon

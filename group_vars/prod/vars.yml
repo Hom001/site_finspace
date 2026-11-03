@@ -1,0 +1,28 @@
+# Подключение
+ansible_host: финспэйс.рф
+
+root_user: "{{ ve_root_user }}"
+root_ssh_key: /home/kirill/.ssh/Sharon
+
+deploy_user: "{{ ve_ansible_user }}"
+deploy_ssh_key: /home/kirill/.ssh/deploy_ed25519
+
+ansible_user: "{{ root_user if (bootstrap | default(false) | bool) else deploy_user }}"
+ansible_ssh_private_key_file: "{{ root_ssh_key if (bootstrap | default(false) | bool) else deploy_ssh_key }}"
+
+# Сайт
+site_domain: "{{ ve_site_domain }}"
+db_user: "{{ ve_db_user }}"
+db_password: "{{ ve_db_password }}"
+
+php_version: "8.5"
+php_build: "8.5.12-1+ubuntu24.04.1+deb.sury.org+1"
+
+# Файлы бэкапа
+backup_archive: "20251203_d184d0b8d0bdd181d0bfd18dd0b9d18_24b833eb4d835b0d3361_20260826072723_archive.zip"
+installer_file: "installer.php"
+
+# Zabbix
+zabbix_version: 7.0
+zabbix_server_ip: "{{ ve_zabbix_server_ip }}"
+zabbix_agent_port: 10050
